@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NEO Piano
+GenericName=Digital Piano
+Comment=Play piano on the NEO One
+Exec=neo-piano
+Icon=neo-piano
+Terminal=false
+Categories=AudioVideo;Audio;Music;Education;
+Keywords=piano;music;keyboard;education;neo;
+StartupNotify=true
+

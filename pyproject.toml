@@ -1,0 +1,45 @@
+[project]
+name = "neo-piano"
+version = "0.1.0"
+description = "Piano application for the NEO One education device"
+authors = [
+    {name = "Maker Viet"},
+    {name = "De Foundation"},
+    {name = "ThingEdu"},
+]
+# Debian 12's setuptools requires the PEP 621 table form.
+license = {text = "MIT"}
+readme = "README-en.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt6>=6.4,<7",
+]
+
+[project.scripts]
+neo-piano = "neo_piano.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+neo_piano = ["ui/qml/**/*.qml", "resources/**/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

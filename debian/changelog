@@ -1,0 +1,6 @@
+neo-piano (0.1.0) unstable; urgency=medium
+
+  * Initial project and Debian package.
+  * Add low-latency FluidSynth audio playback.
+
+ -- Maker Viet <everwellmax@gmail.com>  Mon, 13 Jul 2026 00:00:00 +0700

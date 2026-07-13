@@ -1,0 +1,33 @@
+Source: neo-piano
+Section: education
+Priority: optional
+Maintainer: ThingEdu <everwellmax@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-setuptools,
+ pybuild-plugin-pyproject
+Standards-Version: 4.6.2
+Homepage: https://github.com/lgthevinh/neo-piano
+Rules-Requires-Root: no
+
+Package: neo-piano
+Architecture: all
+Depends: ${misc:Depends},
+ ${python3:Depends},
+ python3-pyqt6,
+ python3-pyqt6.qtquick,
+ python3-pyqt6.qtqml,
+ libfluidsynth3,
+ timgm6mb-soundfont,
+ qt6-qpa-plugins,
+ qml6-module-qtquick,
+ qml6-module-qtquick-controls,
+ qml6-module-qtquick-layouts,
+ qml6-module-qtquick-window,
+ qml6-module-qtquick-templates,
+ qml6-module-qtqml-workerscript
+Recommends: qt6-wayland
+Description: Piano application for NEO One device
+ NEO Piano is a Qt Quick piano application for the ARM64/Armbian-based
+ NEO One education device and standard Linux desktops.

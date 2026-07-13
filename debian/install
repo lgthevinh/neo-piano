@@ -1,0 +1,3 @@
+packaging/neo-piano.desktop usr/share/applications
+src/neo_piano/resources/icons/neo-piano.svg usr/share/icons/hicolor/scalable/apps
+
