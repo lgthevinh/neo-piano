@@ -1,22 +1,22 @@
 # NEO Piano
 
-NEO Piano la ung dung piano cho thiet bi giao duc NEO One (ARM64/Armbian).
-Ung dung su dung Python, PyQt6 va Qt Quick/QML.
+NEO Piano is a piano application for the ARM64/Armbian-based NEO One education
+device. It uses Python, PyQt6, and Qt Quick/QML.
 
-Am thanh duoc tong hop boi FluidSynth va xuat truc tiep qua ALSA tren Linux.
-Goi Debian tu dong cai thu vien native va SoundFont TimGM6mb gon nhe.
+Audio is rendered by FluidSynth through ALSA on Linux. The Debian package
+installs the native library and the compact TimGM6mb SoundFont automatically.
 
-## Phat trien
+## Development
 
-Yeu cau Python 3.10 tro len.
+Python 3.10 or newer is required.
 
-Tren Fedora, cai dat bo tong hop am thanh mot lan:
+On Fedora, install the native audio runtime once:
 
 ```bash
 sudo dnf install fluidsynth fluid-soundfont-gm
 ```
 
-Goi Debian se tu dong cai cac dependency tuong duong.
+The Debian package installs the equivalent runtime dependencies automatically.
 
 ```bash
 python3 -m venv .venv
@@ -25,7 +25,7 @@ make dev
 make run
 ```
 
-## Kiem tra
+## Verification
 
 ```bash
 make test
@@ -33,27 +33,42 @@ make lint
 make build
 ```
 
-## Dong goi Debian 12
+## Debian 12 package
 
-Can Docker hoac Podman:
+Docker or Podman is required:
 
 ```bash
 make deb
 ```
 
-Goi `.deb` duoc tao trong `dist/` va co the cai bang `apt` tren NEO One.
+The resulting `.deb` is written to `dist/` and can be installed with `apt` on
+the NEO One.
 
-## Dieu khien va do tre am thanh
+## Audio tuning
 
-Bo 5 phim mac dinh su dung cac phim mui ten va Space. Bang dieu khien co the mo
-rong thanh 8 hoac 12 phim trang. Nhan Escape de tat tat ca cac not. Cau hinh mac
-dinh la 3 buffer, moi buffer 128 sample tai
-48 kHz. Co the dieu chinh khi do tren NEO One bang cac bien moi truong
-`NEO_PIANO_PERIOD_SIZE`, `NEO_PIANO_PERIODS`, `NEO_PIANO_SAMPLE_RATE` va
-`NEO_PIANO_SOUNDFONT`.
+The default audio buffer is 3 periods of 128 samples at 48 kHz. The following
+environment variables can be used for measurements on the target device:
 
-## Cai dat tren NEO One
+```text
+NEO_PIANO_SOUNDFONT
+NEO_PIANO_AUDIO_DRIVER
+NEO_PIANO_SAMPLE_RATE
+NEO_PIANO_PERIOD_SIZE
+NEO_PIANO_PERIODS
+NEO_PIANO_POLYPHONY
+NEO_PIANO_CPU_CORES
+NEO_PIANO_GAIN
+```
+
+The default five-key layout maps the arrow keys and Space to white piano keys.
+The control panel can expand the board to 8 or 12 white keys. Press Escape to
+stop all notes.
+
+## Install on NEO One
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lgthevinh/neo-piano/main/scripts/install_on_neo.sh | bash
 ```
+
+Install a specific version with `--version=X.Y.Z`, or remove the app with
+`--uninstall`.

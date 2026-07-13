@@ -9,7 +9,7 @@ authors = [
 ]
 # Debian 12's setuptools requires the PEP 621 table form.
 license = {text = "MIT"}
-readme = "README-en.md"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "PyQt6>=6.4,<7",
