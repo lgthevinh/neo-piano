@@ -1,3 +1,9 @@
+neo-piano (0.3.0) unstable; urgency=medium
+
+  * Raise the default piano gain to full volume.
+
+ -- Maker Viet <everwellmax@gmail.com>  Tue, 14 Jul 2026 00:00:00 +0700
+
 neo-piano (0.2.0) unstable; urgency=medium
 
   * Route FluidSynth through PulseAudio on Linux.

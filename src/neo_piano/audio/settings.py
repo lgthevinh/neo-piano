@@ -40,7 +40,7 @@ class AudioSettings:
     periods: int = 3
     polyphony: int = 64
     cpu_cores: int = 2
-    gain: float = 0.5
+    gain: float = 1.0
 
     def __post_init__(self) -> None:
         if not self.driver:
@@ -70,5 +70,5 @@ class AudioSettings:
             periods=_env_int("NEO_PIANO_PERIODS", 3),
             polyphony=_env_int("NEO_PIANO_POLYPHONY", 64),
             cpu_cores=_env_int("NEO_PIANO_CPU_CORES", 2),
-            gain=_env_float("NEO_PIANO_GAIN", 0.5),
+            gain=_env_float("NEO_PIANO_GAIN", 1.0),
         )

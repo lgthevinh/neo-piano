@@ -1,6 +1,6 @@
 [project]
 name = "neo-piano"
-version = "0.2.0"
+version = "0.3.0"
 description = "Piano application for the NEO One education device"
 authors = [
     {name = "Maker Viet"},

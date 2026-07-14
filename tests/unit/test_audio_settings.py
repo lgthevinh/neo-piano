@@ -3,6 +3,12 @@ import pytest
 from neo_piano.audio.settings import AudioSettings
 
 
+def test_audio_settings_default_to_full_gain(monkeypatch) -> None:
+    monkeypatch.delenv("NEO_PIANO_GAIN", raising=False)
+
+    assert AudioSettings.from_environment().gain == 1.0
+
+
 def test_audio_settings_load_environment(monkeypatch) -> None:
     monkeypatch.setenv("NEO_PIANO_AUDIO_DRIVER", "pulseaudio")
     monkeypatch.setenv("NEO_PIANO_AUDIO_DEVICE", "alsa_output.h616")
