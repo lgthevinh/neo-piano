@@ -1,12 +1,20 @@
 import logging
+import os
 from dataclasses import replace
 from pathlib import Path
-from threading import RLock
+from threading import RLock, Thread
 from typing import Protocol
 
-from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot  # type: ignore[attr-defined]
+from PyQt6.QtCore import (  # type: ignore[attr-defined]
+    QObject,
+    QSettings,
+    pyqtProperty,
+    pyqtSignal,
+    pyqtSlot,
+)
 
 from neo_piano.audio.fluidsynth import FluidSynthBackend, FluidSynthError
+from neo_piano.audio.outputs import AudioOutput, OutputProvider, PulseAudioOutputProvider
 from neo_piano.audio.settings import AudioSettings
 from neo_piano.audio.soundfonts import SoundFontNotFoundError, find_soundfont
 
@@ -40,21 +48,39 @@ class AudioEngine(QObject):
     statusMessageChanged = pyqtSignal()  # noqa: N815
     noteStateChanged = pyqtSignal(int, bool)  # noqa: N815
     volumeChanged = pyqtSignal()  # noqa: N815
+    outputDevicesChanged = pyqtSignal()  # noqa: N815
+    selectedOutputDeviceChanged = pyqtSignal()  # noqa: N815
+    outputSwitchingChanged = pyqtSignal()  # noqa: N815
+    _outputsLoaded = pyqtSignal(object)  # noqa: N815
+    _outputSwitchFinished = pyqtSignal(str, bool, str, bool)  # noqa: N815
 
     def __init__(
         self,
         settings: AudioSettings | None = None,
         backend_factory: BackendFactory = FluidSynthBackend,
+        output_provider: OutputProvider | None = None,
     ) -> None:
         super().__init__()
         self._settings = settings or AudioSettings.from_environment()
+        self._preferences = QSettings()
+        self._persist_output_device = settings is None and "NEO_PIANO_AUDIO_DEVICE" not in os.environ
+        if self._persist_output_device:
+            saved_device = self._preferences.value("audio/outputDevice")
+            if isinstance(saved_device, str) and saved_device:
+                self._settings = replace(self._settings, device=saved_device)
         self._backend_factory = backend_factory
+        self._output_provider = output_provider or PulseAudioOutputProvider()
         self._backend: SynthBackend | None = None
         self._ready = False
         self._status_message = "Starting audio"
         self._volume = max(0, min(100, round(self._settings.gain * 100)))
         self._active_notes: set[int] = set()
         self._lock = RLock()
+        self._output_devices = [AudioOutput("default", "System default")]
+        self._output_switching = False
+        self._closing = False
+        self._outputsLoaded.connect(self._apply_output_devices)
+        self._outputSwitchFinished.connect(self._finish_output_switch)
 
     @pyqtProperty(bool, notify=readyChanged)  # type: ignore[untyped-decorator]
     def ready(self) -> bool:
@@ -67,6 +93,21 @@ class AudioEngine(QObject):
     @pyqtProperty(int, notify=volumeChanged)  # type: ignore[untyped-decorator]
     def volume(self) -> int:
         return self._volume
+
+    @pyqtProperty("QVariantList", notify=outputDevicesChanged)  # type: ignore[untyped-decorator]
+    def outputDevices(self) -> list[dict[str, str]]:  # noqa: N802
+        return [
+            {"name": output.name, "description": output.description}
+            for output in self._output_devices
+        ]
+
+    @pyqtProperty(str, notify=selectedOutputDeviceChanged)  # type: ignore[untyped-decorator]
+    def selectedOutputDevice(self) -> str:  # noqa: N802
+        return self._settings.device
+
+    @pyqtProperty(bool, notify=outputSwitchingChanged)  # type: ignore[untyped-decorator]
+    def outputSwitching(self) -> bool:  # noqa: N802
+        return self._output_switching
 
     def _set_state(self, ready: bool, message: str) -> None:
         if self._ready != ready:
@@ -151,6 +192,89 @@ class AudioEngine(QObject):
             self.volumeChanged.emit()
 
     @pyqtSlot()
+    def refreshOutputDevices(self) -> None:  # noqa: N802
+        if self._settings.driver != "pulseaudio":
+            return
+
+        def load() -> None:
+            try:
+                outputs = self._output_provider.list_outputs()
+            except (OSError, RuntimeError) as error:
+                logger.warning("Cannot list PulseAudio outputs: %s", error)
+                outputs = []
+            self._outputsLoaded.emit(outputs)
+
+        Thread(target=load, name="neo-piano-output-list", daemon=True).start()
+
+    @pyqtSlot(object)
+    def _apply_output_devices(self, outputs: object) -> None:
+        discovered = outputs if isinstance(outputs, list) else []
+        devices = [AudioOutput("default", "System default")]
+        devices.extend(output for output in discovered if isinstance(output, AudioOutput))
+        if devices != self._output_devices:
+            self._output_devices = devices
+            self.outputDevicesChanged.emit()
+
+    @pyqtSlot(str)
+    def setOutputDevice(self, device: str) -> None:  # noqa: N802
+        if not device or device == self._settings.device or self._output_switching:
+            return
+        self.allNotesOff()
+        self._output_switching = True
+        self.outputSwitchingChanged.emit()
+        self._set_state(False, "Switching audio output")
+
+        def switch() -> None:
+            error_message = ""
+            success = False
+            fallback_ready = False
+            next_settings = replace(self._settings, device=device)
+            with self._lock:
+                try:
+                    if self._backend is not None:
+                        self._backend.close()
+                    self._backend = None
+                    soundfont = find_soundfont()
+                    backend = self._backend_factory(next_settings, soundfont)
+                    backend.start()
+                    self._backend = backend
+                    success = True
+                except (OSError, RuntimeError, ValueError) as error:
+                    logger.error("Cannot switch audio output to %s: %s", device, error)
+                    error_message = self._error_status(error)
+                    try:
+                        soundfont = find_soundfont()
+                        fallback = self._backend_factory(self._settings, soundfont)
+                        fallback.start()
+                        self._backend = fallback
+                        fallback_ready = True
+                    except (OSError, RuntimeError, ValueError) as fallback_error:
+                        logger.error("Cannot restore previous audio output: %s", fallback_error)
+            self._outputSwitchFinished.emit(device, success, error_message, fallback_ready)
+
+        Thread(target=switch, name="neo-piano-output-switch", daemon=True).start()
+
+    @pyqtSlot(str, bool, str, bool)
+    def _finish_output_switch(
+        self, device: str, success: bool, error_message: str, fallback_ready: bool
+    ) -> None:
+        self._output_switching = False
+        self.outputSwitchingChanged.emit()
+        if self._closing:
+            return
+        if success:
+            self._settings = replace(self._settings, device=device)
+            if self._persist_output_device:
+                self._preferences.setValue("audio/outputDevice", device)
+            self.selectedOutputDeviceChanged.emit()
+            self._set_state(True, "Audio ready")
+        elif fallback_ready:
+            self.selectedOutputDeviceChanged.emit()
+            self._set_state(True, "Audio ready")
+        else:
+            self._set_state(False, error_message or "Audio unavailable")
+
+    @pyqtSlot()
     def allNotesOff(self) -> None:  # noqa: N802
         with self._lock:
             if self._backend is not None:
@@ -161,6 +285,7 @@ class AudioEngine(QObject):
 
     @pyqtSlot()
     def close(self) -> None:
+        self._closing = True
         with self._lock:
             if self._backend is not None:
                 self._backend.close()

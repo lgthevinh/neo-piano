@@ -94,6 +94,10 @@ class FluidSynthBackend:
 
         try:
             self._set_string("audio.driver", self._config.driver)
+            if self._config.driver == "alsa":
+                self._set_string("audio.alsa.device", self._config.device)
+            elif self._config.driver == "pulseaudio":
+                self._set_string("audio.pulseaudio.device", self._config.device)
             self._set_number("synth.sample-rate", float(self._config.sample_rate))
             self._set_integer("audio.period-size", self._config.period_size)
             self._set_integer("audio.periods", self._config.periods)

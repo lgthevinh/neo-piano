@@ -7,7 +7,7 @@ from neo_piano.app import run
 
 
 def test_application_exports_entrypoints() -> None:
-    assert __version__ == "0.1.0"
+    assert __version__ == "0.2.0"
     assert callable(main)
     assert callable(run)
 

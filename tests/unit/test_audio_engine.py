@@ -5,6 +5,7 @@ import pytest
 from neo_piano.audio import engine as engine_module
 from neo_piano.audio.engine import AudioEngine
 from neo_piano.audio.fluidsynth import FluidSynthError
+from neo_piano.audio.outputs import AudioOutput
 from neo_piano.audio.settings import AudioSettings
 from neo_piano.audio.soundfonts import SoundFontNotFoundError
 
@@ -36,6 +37,14 @@ class FakeBackend:
 
     def close(self) -> None:
         self.calls.append(("close",))
+
+
+class ImmediateThread:
+    def __init__(self, *, target, **_kwargs) -> None:
+        self._target = target
+
+    def start(self) -> None:
+        self._target()
 
 
 def test_audio_engine_controls_backend(monkeypatch, tmp_path: Path) -> None:
@@ -111,3 +120,90 @@ def test_audio_engine_validates_volume(volume: int) -> None:
 
     with pytest.raises(ValueError, match="volume must be between 0 and 100"):
         audio.setVolume(volume)
+
+
+def test_audio_engine_exposes_discovered_outputs() -> None:
+    audio = AudioEngine(AudioSettings())
+
+    audio._apply_output_devices(
+        [
+            AudioOutput("alsa_output.h616", "NEO One speakers"),
+            AudioOutput("alsa_output.hdmi", "HDMI"),
+        ]
+    )
+
+    assert audio.outputDevices == [
+        {"name": "default", "description": "System default"},
+        {"name": "alsa_output.h616", "description": "NEO One speakers"},
+        {"name": "alsa_output.hdmi", "description": "HDMI"},
+    ]
+
+
+def test_audio_engine_switches_output_without_blocking_qt_thread(
+    monkeypatch, tmp_path: Path
+) -> None:
+    soundfont = tmp_path / "piano.sf2"
+    soundfont.write_bytes(b"sf2")
+    backends: list[FakeBackend] = []
+    settings_seen: list[AudioSettings] = []
+
+    def factory(settings: AudioSettings, _soundfont: Path) -> FakeBackend:
+        settings_seen.append(settings)
+        backend = FakeBackend()
+        backends.append(backend)
+        return backend
+
+    monkeypatch.setattr(engine_module, "find_soundfont", lambda: soundfont)
+    monkeypatch.setattr(engine_module, "Thread", ImmediateThread)
+    audio = AudioEngine(AudioSettings(), factory)
+    assert audio.start()
+
+    audio.setOutputDevice("alsa_output.h616")
+
+    assert audio.ready
+    assert not audio.outputSwitching
+    assert audio.selectedOutputDevice == "alsa_output.h616"
+    assert [settings.device for settings in settings_seen] == ["default", "alsa_output.h616"]
+    assert backends[0].calls == [("start",), ("all_notes_off",), ("close",)]
+    assert backends[1].calls == [("start",)]
+
+
+def test_audio_engine_loads_saved_output_device(monkeypatch) -> None:
+    class FakePreferences:
+        def value(self, key: str):
+            assert key == "audio/outputDevice"
+            return "alsa_output.h616"
+
+        def setValue(self, _key: str, _value: str) -> None:  # noqa: N802
+            pass
+
+    monkeypatch.delenv("NEO_PIANO_AUDIO_DEVICE", raising=False)
+    monkeypatch.setattr(engine_module, "QSettings", FakePreferences)
+
+    audio = AudioEngine()
+
+    assert audio.selectedOutputDevice == "alsa_output.h616"
+
+
+def test_audio_engine_restores_previous_output_when_switch_fails(
+    monkeypatch, tmp_path: Path
+) -> None:
+    soundfont = tmp_path / "piano.sf2"
+    soundfont.write_bytes(b"sf2")
+    created = 0
+
+    def factory(_settings: AudioSettings, _soundfont: Path) -> FakeBackend:
+        nonlocal created
+        created += 1
+        return FakeBackend(fail_start=created == 2)
+
+    monkeypatch.setattr(engine_module, "find_soundfont", lambda: soundfont)
+    monkeypatch.setattr(engine_module, "Thread", ImmediateThread)
+    audio = AudioEngine(AudioSettings(), factory)
+    assert audio.start()
+
+    audio.setOutputDevice("alsa_output.unavailable")
+
+    assert audio.ready
+    assert audio.selectedOutputDevice == "default"
+    assert created == 3

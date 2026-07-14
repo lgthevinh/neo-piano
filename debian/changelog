@@ -1,3 +1,10 @@
+neo-piano (0.2.0) unstable; urgency=medium
+
+  * Route FluidSynth through PulseAudio on Linux.
+  * Add persistent audio output selection with safe fallback.
+
+ -- Maker Viet <everwellmax@gmail.com>  Tue, 14 Jul 2026 00:00:00 +0700
+
 neo-piano (0.1.0) unstable; urgency=medium
 
   * Initial project and Debian package.

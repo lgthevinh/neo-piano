@@ -51,6 +51,7 @@ def test_fluidsynth_backend_lifecycle(tmp_path: Path) -> None:
     backend.close()
 
     assert library.fluid_synth_sfload.calls == [(2, str(soundfont).encode(), 1)]
+    assert (1, b"audio.pulseaudio.device", b"default") in library.fluid_settings_setstr.calls
     assert library.fluid_synth_program_select.calls == [(2, 0, 3, 0, 0)]
     assert library.fluid_synth_noteon.calls == [(2, 0, 60, 100)]
     assert library.fluid_synth_noteoff.calls == [(2, 0, 60)]
@@ -81,3 +82,13 @@ def test_fluidsynth_note_off_allows_an_already_ended_voice(tmp_path: Path) -> No
     backend.note_off(60)
 
     assert library.fluid_synth_noteoff.calls == [(2, 0, 60)]
+
+
+def test_fluidsynth_selects_alsa_device(tmp_path: Path) -> None:
+    library = FakeLibrary()
+    settings = AudioSettings(driver="alsa", device="plughw:1")
+    backend = FluidSynthBackend(settings, tmp_path / "piano.sf2", library)
+
+    backend.start()
+
+    assert (1, b"audio.alsa.device", b"plughw:1") in library.fluid_settings_setstr.calls

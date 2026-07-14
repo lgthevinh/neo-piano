@@ -1,6 +1,6 @@
 [project]
 name = "neo-piano"
-version = "0.1.0"
+version = "0.2.0"
 description = "Piano application for the NEO One education device"
 authors = [
     {name = "Maker Viet"},
@@ -13,6 +13,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "PyQt6>=6.4,<7",
+    "pulsectl>=22.3,<25",
 ]
 
 [project.scripts]

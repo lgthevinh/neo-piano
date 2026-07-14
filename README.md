@@ -3,8 +3,10 @@
 NEO Piano is a piano application for the ARM64/Armbian-based NEO One education
 device. It uses Python, PyQt6, and Qt Quick/QML.
 
-Audio is rendered by FluidSynth through ALSA on Linux. The Debian package
-installs the native library and the compact TimGM6mb SoundFont automatically.
+Audio is rendered by FluidSynth through PulseAudio on Linux so it can coexist
+with desktop audio and switch between the NEO One's onboard and HDMI outputs.
+The Debian package installs the native library and the compact TimGM6mb
+SoundFont automatically.
 
 ## Development
 
@@ -52,6 +54,7 @@ environment variables can be used for measurements on the target device:
 ```text
 NEO_PIANO_SOUNDFONT
 NEO_PIANO_AUDIO_DRIVER
+NEO_PIANO_AUDIO_DEVICE
 NEO_PIANO_SAMPLE_RATE
 NEO_PIANO_PERIOD_SIZE
 NEO_PIANO_PERIODS
@@ -62,7 +65,8 @@ NEO_PIANO_GAIN
 
 The default five-key layout maps the arrow keys and Space to white piano keys.
 The control panel can expand the board to 8 or 12 white keys. Press Escape to
-stop all notes.
+stop all notes. On PulseAudio systems, the control panel also lists available
+audio outputs and remembers the selected output for the next launch.
 
 ## Install on NEO One
 

@@ -352,11 +352,71 @@ ApplicationWindow {
                         }
                     }
 
+                    ColumnLayout {
+                        visible: root.controlsExpanded
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Label {
+                            text: "Audio output"
+                            color: root.muted
+                            font.family: "Noto Sans"
+                            font.pixelSize: 13
+                        }
+
+                        ComboBox {
+                            id: outputSelect
+                            Layout.fillWidth: true
+                            model: audioEngine ? audioEngine.outputDevices : []
+                            textRole: "description"
+                            valueRole: "name"
+                            enabled: audioEngine && !audioEngine.outputSwitching
+
+                            function selectCurrentOutput() {
+                                if (!audioEngine)
+                                    return
+                                for (let index = 0; index < count; index++) {
+                                    if (valueAt(index) === audioEngine.selectedOutputDevice) {
+                                        currentIndex = index
+                                        return
+                                    }
+                                }
+                                currentIndex = 0
+                            }
+
+                            onModelChanged: selectCurrentOutput()
+                            onActivated: {
+                                if (audioEngine)
+                                    audioEngine.setOutputDevice(currentValue)
+                                keyHandler.forceActiveFocus()
+                            }
+
+                            Connections {
+                                target: audioEngine
+                                function onSelectedOutputDeviceChanged() {
+                                    outputSelect.selectCurrentOutput()
+                                }
+                            }
+
+                            background: Rectangle {
+                                implicitHeight: 44
+                                color: root.white
+                                border.color: outputSelect.activeFocus ? root.secondary : root.border
+                                border.width: outputSelect.activeFocus ? 2 : 1
+                                radius: 8
+                            }
+                        }
+                    }
+
                     Item { Layout.fillHeight: true }
                 }
             }
         }
     }
 
-    Component.onCompleted: keyHandler.forceActiveFocus()
+    Component.onCompleted: {
+        keyHandler.forceActiveFocus()
+        if (audioEngine)
+            audioEngine.refreshOutputDevices()
+    }
 }

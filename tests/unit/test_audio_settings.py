@@ -5,6 +5,7 @@ from neo_piano.audio.settings import AudioSettings
 
 def test_audio_settings_load_environment(monkeypatch) -> None:
     monkeypatch.setenv("NEO_PIANO_AUDIO_DRIVER", "pulseaudio")
+    monkeypatch.setenv("NEO_PIANO_AUDIO_DEVICE", "alsa_output.h616")
     monkeypatch.setenv("NEO_PIANO_SAMPLE_RATE", "44100")
     monkeypatch.setenv("NEO_PIANO_PERIOD_SIZE", "64")
     monkeypatch.setenv("NEO_PIANO_PERIODS", "4")
@@ -15,6 +16,7 @@ def test_audio_settings_load_environment(monkeypatch) -> None:
     settings = AudioSettings.from_environment()
 
     assert settings.driver == "pulseaudio"
+    assert settings.device == "alsa_output.h616"
     assert settings.sample_rate == 44_100
     assert settings.period_size == 64
     assert settings.periods == 4
@@ -44,4 +46,3 @@ def test_audio_settings_reject_non_numeric_environment(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="NEO_PIANO_PERIOD_SIZE must be an integer"):
         AudioSettings.from_environment()
-
